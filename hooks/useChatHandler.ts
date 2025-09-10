@@ -160,6 +160,7 @@ export const useChatHandler = ({
         let currentConversationId = activeConversationId;
         let isFirstTurnInConversation = false;
         let conversationForThisTurn: Conversation;
+        let newUserMessage: ChatMessageType;
 
         if (!currentConversationId) {
             const newId = crypto.randomUUID();
@@ -195,9 +196,18 @@ export const useChatHandler = ({
         const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true, modelUsed: modelToUse, timestamp: new Date().toISOString() };
         
         if (!isRetry) {
-            const newUserMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'user', content: fullPrompt, images: images, file: file, url: url, modelUsed: modelToUse, timestamp: new Date().toISOString() };
+            newUserMessage = { id: crypto.randomUUID(), role: 'user', content: fullPrompt, images: images, file: file, url: url, modelUsed: modelToUse, timestamp: new Date().toISOString() };
             updateConversationMessages(currentConversationId, prev => [...prev, newUserMessage, planningMessage]);
         } else {
+            // In a retry, the user message is already in state. Find it.
+            const lastUserMessage = conversationForThisTurn.messages.filter(m => m.role === 'user').pop();
+            if (!lastUserMessage) {
+                 logError(new Error(`useChatHandler: Could not find user message to retry in conversation ${currentConversationId}`));
+                 setIsLoading(false);
+                 stopResponseTimer();
+                 return;
+            }
+            newUserMessage = lastUserMessage;
             updateConversationMessages(currentConversationId, prev => [...prev, planningMessage]);
         }
 
@@ -206,7 +216,7 @@ export const useChatHandler = ({
         let isFileAnalysisRequest = false;
 
         try {
-            const plan = await planResponse(fullPrompt, images, file, modelToUse);
+            const plan = await planResponse(fullPrompt, images, file, modelToUse, conversationForThisTurn.summaries);
             if (isCancelledRef.current) return;
             
             let developerContext: string | undefined = undefined;
@@ -249,14 +259,12 @@ export const useChatHandler = ({
                 plan.thoughts = [];
                 // Start animation on the user's message
                 updateConversationMessages(currentConversationId, prev =>
-                    prev.map(m => m.id === prev[prev.length - 2]?.id ? { ...m, isAnalyzingImage: true } : m)
+                    prev.map(m => m.id === newUserMessage.id ? { ...m, isAnalyzingImage: true } : m)
                 );
             }
 
             if (isFileAnalysisRequest) {
-                updateConversationMessages(currentConversationId, prev =>
-                    prev.map(m => m.id === prev[prev.length - 2]?.id ? { ...m, isAnalyzingFile: true } : m)
-                );
+                updateConversationMessages(currentConversationId, prev => prev.map(m => m.id === newUserMessage.id ? { ...m, isAnalyzingFile: true } : m));
             }
             
             const handleToolError = (errorMessage: string) => {
@@ -503,79 +511,77 @@ export const useChatHandler = ({
             }
 
             const finalCleanedResponse = finalModelResponse.replace(/^\s*TITLE:\s*[^\n]*\n?/, '');
-            const finalConversationState = conversations.find(c => c.id === currentConversationId);
-            if (finalConversationState && !isCancelledRef.current) {
-                 // New 'convo' summarization logic
-                if (finalConversationState.messages.length > 0 && finalConversationState.messages.length % 20 === 0) {
-                    const convosToSummarize = [];
-                    const recentMessages = finalConversationState.messages.slice(-20);
-                    for (let i = 0; i < recentMessages.length; i += 2) {
-                        if (recentMessages[i].role === 'user' && recentMessages[i+1]?.role === 'model') {
-                            convosToSummarize.push({ user: recentMessages[i], model: recentMessages[i+1] });
-                        }
-                    }
-                    if (convosToSummarize.length > 0) {
-                        generateConvoSummaries(convosToSummarize, finalConversationState.summaries?.length || 0)
-                            .then(newSummaries => {
+            
+            if (!isCancelledRef.current) {
+                // After response is complete, generate summary for this turn
+                updateConversation(currentConversationId, currentConvo => {
+                    const lastModelMessage = currentConvo.messages[currentConvo.messages.length - 1];
+                    if (newUserMessage && lastModelMessage && lastModelMessage.role === 'model') {
+                         const modelMessageForSummary = { ...lastModelMessage, content: finalCleanedResponse };
+                        generateConvoSummaries(
+                            [{ user: newUserMessage, model: modelMessageForSummary }],
+                            currentConvo.summaries?.length || 0
+                        ).then(newSummaries => {
+                            if (newSummaries.length > 0) {
                                 updateConversation(currentConversationId, c => ({
                                     ...c,
                                     summaries: [...(c.summaries || []), ...newSummaries]
                                 }));
-                            });
-                    }
-                }
-
-                const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-                let match;
-                const codeContextForSaving = transformMessagesToHistory(finalConversationState.messages.slice(-2));
-                while ((match = codeBlockRegex.exec(finalCleanedResponse)) !== null) {
-                    const capturedMatch = match;
-                    processAndSaveCode({ language: capturedMatch[1] || 'text', code: capturedMatch[2] }, codeContextForSaving)
-                        .then(result => setCodeMemory(prev => [...prev, { id: crypto.randomUUID(), ...result, language: capturedMatch[1] || 'text', code: capturedMatch[2] }]));
-                }
-
-                if (finalCleanedResponse.trim()) {
-                    updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, userProfile, modelToUse)
-                        .then(memoryResult => {
-                            const { newMemories, updatedMemories, userProfileUpdates } = memoryResult;
-                            
-                            let ltmAfterUpdates = [...ltm];
-                            let memoryWasModified = false;
-
-                            // Process updates
-                            if (updatedMemories && updatedMemories.length > 0) {
-                                updatedMemories.forEach(update => {
-                                    const index = ltmAfterUpdates.findIndex(mem => mem === update.old_memory);
-                                    if (index !== -1) {
-                                        ltmAfterUpdates[index] = update.new_memory;
-                                        memoryWasModified = true;
-                                    }
-                                });
-                            }
-
-                            // Process additions
-                            if (newMemories && newMemories.length > 0) {
-                                const uniqueNewMemories = newMemories.filter(mem => !ltmAfterUpdates.includes(mem));
-                                if (uniqueNewMemories.length > 0) {
-                                    ltmAfterUpdates.push(...uniqueNewMemories);
-                                    memoryWasModified = true;
-                                }
-                            }
-                            
-                            if (memoryWasModified) {
-                                setLtm(ltmAfterUpdates);
-                                updateConversationMessages(currentConversationId, prev => {
-                                    const last = prev[prev.length - 1];
-                                    return last?.role === 'model' ? [...prev.slice(0, -1), { ...last, memoryUpdated: true }] : prev;
-                                });
-                            }
-                            
-                            // Update user profile
-                            if (userProfileUpdates.name && userProfileUpdates.name !== userProfile.name) {
-                                setUserProfile(prev => ({ ...prev, name: userProfileUpdates.name }));
                             }
                         });
-                }
+                    }
+
+                    // Code and Memory processing
+                    if (finalCleanedResponse.trim()) {
+                        const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+                        let match;
+                        const codeContextForSaving = transformMessagesToHistory([newUserMessage, { ...lastModelMessage, content: finalCleanedResponse }]);
+                        while ((match = codeBlockRegex.exec(finalCleanedResponse)) !== null) {
+                            const capturedMatch = match;
+                            processAndSaveCode({ language: capturedMatch[1] || 'text', code: capturedMatch[2] }, codeContextForSaving)
+                                .then(result => setCodeMemory(prev => [...prev, { id: crypto.randomUUID(), ...result, language: capturedMatch[1] || 'text', code: capturedMatch[2] }]));
+                        }
+
+                        updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, userProfile, modelToUse)
+                            .then(memoryResult => {
+                                const { newMemories, updatedMemories, userProfileUpdates } = memoryResult;
+                                
+                                let ltmAfterUpdates = [...ltm];
+                                let memoryWasModified = false;
+
+                                if (updatedMemories && updatedMemories.length > 0) {
+                                    updatedMemories.forEach(update => {
+                                        const index = ltmAfterUpdates.findIndex(mem => mem === update.old_memory);
+                                        if (index !== -1) {
+                                            ltmAfterUpdates[index] = update.new_memory;
+                                            memoryWasModified = true;
+                                        }
+                                    });
+                                }
+
+                                if (newMemories && newMemories.length > 0) {
+                                    const uniqueNewMemories = newMemories.filter(mem => !ltmAfterUpdates.includes(mem));
+                                    if (uniqueNewMemories.length > 0) {
+                                        ltmAfterUpdates.push(...uniqueNewMemories);
+                                        memoryWasModified = true;
+                                    }
+                                }
+                                
+                                if (memoryWasModified) {
+                                    setLtm(ltmAfterUpdates);
+                                    updateConversationMessages(currentConversationId, prev => {
+                                        const last = prev[prev.length - 1];
+                                        return last?.role === 'model' ? [...prev.slice(0, -1), { ...last, memoryUpdated: true }] : prev;
+                                    });
+                                }
+                                
+                                if (userProfileUpdates.name && userProfileUpdates.name !== userProfile.name) {
+                                    setUserProfile(prev => ({ ...prev, name: userProfileUpdates.name }));
+                                }
+                            });
+                    }
+                    return currentConvo; // Return the conversation state for the initial update.
+                });
             }
         } catch (e: any) {
             if (isCancelledRef.current) return;

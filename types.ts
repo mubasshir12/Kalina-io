@@ -96,8 +96,8 @@ export interface ConvoSummary {
   userMessageId: string;
   modelMessageId: string;
   serialNumber: number;
-  userInput: string;
-  summary: string;
+  userSummary: string;
+  aiSummary: string;
 }
 
 export interface Conversation {

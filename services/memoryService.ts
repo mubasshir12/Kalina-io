@@ -114,7 +114,9 @@ export const generateConvoSummaries = async (
     startingSerialNumber: number
 ): Promise<ConvoSummary[]> => {
     const ai = getAiClient();
-    const systemInstruction = `You are a conversation summarizer. For each user/AI convo pair provided, create a concise 4-5 line summary of the AI's response. Extract the user's original input text.
+    const systemInstruction = `You are a conversation summarizer. For each user/AI convo pair provided, create a concise summary for BOTH the user's input and the AI's response.
+- If the original text is long (>100 chars), the summary should be 2-4 sentences.
+- If short (<=100 chars), make the summary as brief as possible, capturing the core intent.
 Respond ONLY with a valid JSON array matching the schema.`;
 
     const convoText = convos.map((convo, index) => 
@@ -140,16 +142,16 @@ AI Response: "${convo.model.content}"
                         type: Type.OBJECT,
                         properties: {
                             convo_index: { type: Type.INTEGER },
-                            user_input: { type: Type.STRING },
-                            summary: { type: Type.STRING }
+                            user_summary: { type: Type.STRING },
+                            ai_summary: { type: Type.STRING }
                         },
-                        required: ["convo_index", "user_input", "summary"]
+                        required: ["convo_index", "user_summary", "ai_summary"]
                     }
                 }
             }
         });
         const jsonText = response.text.trim();
-        const summariesData: { convo_index: number; user_input: string; summary: string; }[] = JSON.parse(jsonText);
+        const summariesData: { convo_index: number; user_summary: string; ai_summary: string; }[] = JSON.parse(jsonText);
 
         return summariesData.map((data): ConvoSummary | null => {
             const originalConvo = convos[data.convo_index];
@@ -160,8 +162,8 @@ AI Response: "${convo.model.content}"
                 userMessageId: originalConvo.user.id,
                 modelMessageId: originalConvo.model.id,
                 serialNumber: startingSerialNumber + data.convo_index + 1,
-                userInput: data.user_input,
-                summary: data.summary,
+                userSummary: data.user_summary,
+                aiSummary: data.ai_summary,
             };
             // FIX: Add explicit return type to the map callback to satisfy the type predicate in the filter.
             // This ensures the object's inferred type with a specific UUID string for `id` is compatible with

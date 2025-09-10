@@ -23,6 +23,7 @@ import ImageModal from './components/ImageModal';
 import CodePreviewModal from './components/CodePreviewModal';
 import { useScrollSpy } from './hooks/useScrollSpy';
 import MessageSelectionToolbar from './components/MessageSelectionToolbar';
+import NetworkStatusIndicator from './components/NetworkStatusIndicator';
 
 const models: ModelInfo[] = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash', description: 'Optimized for speed and efficiency.' },
@@ -401,7 +402,7 @@ const App: React.FC = () => {
 
     return (
         <>
-            <div className="relative flex flex-col h-[100dvh] bg-[#F9F6F2] dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300 overflow-hidden">
+            <div className="relative flex flex-col h-[100dvh] bg-[#F9F6F2] dark:bg-transparent text-neutral-800 dark:text-white transition-colors duration-300">
                 <div className="absolute inset-0 z-0">
                     {isDarkMode ? <ParticleUniverse /> : <Globe />}
                 </div>
@@ -510,6 +511,8 @@ const App: React.FC = () => {
                 )}
             </div>
             
+            <NetworkStatusIndicator />
+
             <ModelSwitchModal
                 isOpen={isModelSwitchModalOpen}
                 onClose={() => {

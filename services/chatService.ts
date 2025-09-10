@@ -52,7 +52,7 @@ For the first message in a new chat, your response MUST start with "TITLE: <3-5 
   if (summaries && summaries.length > 0) {
     // Use the last 10 summaries for context
     const recentSummaries = summaries.slice(-10);
-    const summaryContext = recentSummaries.map(s => `Turn ${s.serialNumber}:\nUser: "${s.userInput}"\nSummary of your response: ${s.summary}`).join('\n---\n');
+    const summaryContext = recentSummaries.map(s => `Turn ${s.serialNumber}:\nUser Summary: "${s.userSummary}"\nAI Summary: ${s.aiSummary}`).join('\n---\n');
     contextInstruction += `\n\n---
 [Conversation History Summaries]
 Use these summaries for context. Do not mention them unless asked.

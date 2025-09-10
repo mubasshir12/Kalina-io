@@ -1,7 +1,12 @@
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
+import { ConvoSummary } from "../types";
 
-const planAndThinkSystemInstruction = `You are an AI planner. Analyze the user's prompt to determine the best response strategy by classifying it. Your primary goal is to distinguish between web search, URL read, complex, and simple prompts.
+const planAndThinkSystemInstruction = `You are an AI planner. Use the provided [Conversation Context] to understand follow-up questions and implicit references. Analyze the user's prompt to determine the best response strategy by classifying it. Your primary goal is to distinguish between web search, URL read, complex, and simple prompts.
+
+**[Conversation Context]**
+- The context provides summaries of recent turns. 'Turn 1' is the most recent.
+- **Example:** If the last message was "What about for lunch?" and the context shows the previous topic was "healthy meal ideas for dinner," you should understand the user is now asking for healthy lunch ideas.
 
 **1. Web Search (needsWebSearch: true):**
 Set to true for queries needing real-time or up-to-date info (news, current events, live data like stock prices or weather, or the current time/date).
@@ -17,7 +22,7 @@ Set to true if the user asks who created you, your developer, or your origin.
 Set to true if the user asks what you can do, about your tools, or your abilities (e.g., "what are your skills?", "can you generate images?").
 
 **5. Molecule Visualization (isMoleculeRequest: true):**
-Set to true if the user asks to see a 3D model or structure of a chemical compound (e.g., "show me water in 3D", "what does caffeine look like?"). Extract the name of the compound into \`moleculeName\`.
+Set to true if the user asks to see a 3D model or structure of a chemical compound (e.g., "show me water in 3D", "what does caffeine look like?"). Extract the name of the compound into \`moleculeName\`. **If you suspect a spelling error in the compound name, provide the corrected spelling.**
 
 **6. File Analysis:**
 - If a file is attached, always set 'needsThinking' to true.
@@ -64,10 +69,21 @@ export interface ResponsePlan {
     searchPlan?: ThoughtStep[];
 }
 
-export const planResponse = async (prompt: string, images?: { base64: string; mimeType: string; }[], file?: { base64: string; mimeType: string; name: string; }, model: string = 'gemini-2.5-flash'): Promise<ResponsePlan> => {
+export const planResponse = async (prompt: string, images?: { base64: string; mimeType: string; }[], file?: { base64: string; mimeType: string; name: string; }, model: string = 'gemini-2.5-flash', summaries?: ConvoSummary[]): Promise<ResponsePlan> => {
     const ai = getAiClient();
     try {
-        const contentParts: Part[] = [{ text: prompt }];
+        let promptForPlanner = prompt;
+        if (summaries && summaries.length > 0) {
+            const contextString = summaries
+                .slice(-5) // Get the last 5 summaries
+                .reverse() // Newest first
+                .map((s, index) => `Turn ${index + 1} (Most Recent):\nUser Summary: "${s.userSummary}"\nAI Summary: "${s.aiSummary}"`)
+                .join('\n---\n');
+            promptForPlanner = `[CONVERSATION CONTEXT]\n${contextString}\n\n[CURRENT USER PROMPT]\n${prompt}`;
+        }
+
+        const contentParts: Part[] = [{ text: promptForPlanner }];
+        
         if (images && images.length > 0) {
             contentParts.unshift({ text: `[User has attached ${images.length} image(s)]` });
         }

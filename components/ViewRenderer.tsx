@@ -91,7 +91,7 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
         case 'chat':
         default:
             return (
-                <main className="relative z-10 flex-1 flex flex-col overflow-hidden">
+                <main className="relative flex-1 flex flex-col">
                     <div className="flex-1 relative">
                         <div 
                             ref={scrollContainerRef} 
