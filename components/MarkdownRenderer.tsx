@@ -201,9 +201,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
                                 <tr key={rowIndex}>
                                     {row.map((cell, cellIndex) => (
                                         <td key={cellIndex} style={{ textAlign: alignments[cellIndex] as any }}>
-                                            <div className="cell-content-wrapper">
-                                                {parseInline(cell.trim(), sources)}
-                                            </div>
+                                            {parseInline(cell.trim(), sources)}
                                         </td>
 
                                     ))}
