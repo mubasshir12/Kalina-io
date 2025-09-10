@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kalina AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Enable class-based dark mode
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" id="hljs-light-theme">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" id="hljs-dark-theme" disabled>
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
+      .code-scrollbar::-webkit-scrollbar {
+        height: 8px;
+      }
+      .code-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .code-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .dark .code-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
+      }
+      .text-3d-effect {
+        /* A subtle shadow to give a slight lift */
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
+      }
+      .dark .text-3d-effect {
+        /* A slightly more pronounced shadow might be needed in dark mode to be visible */
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25);
+      }
+      .image-reveal-container {
+        position: relative;
+        /* Hides the image by clipping it from the bottom, to reveal from bottom-to-top */
+        clip-path: inset(0 0 100% 0);
+        /* Animate the clip-path property over 1.5s for a smooth reveal */
+        transition: clip-path 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      .image-reveal-container.is-loaded {
+        /* Reveals the image by setting all insets to 0 */
+        clip-path: inset(0 0 0 0);
+      }
+      .dark .blurry-text-effect p,
+      .dark .blurry-text-effect li,
+      .dark .blurry-text-effect h1,
+      .dark .blurry-text-effect h2,
+      .dark .blurry-text-effect h3,
+      .dark .blurry-text-effect h4,
+      .dark .blurry-text-effect h5,
+      .dark .blurry-text-effect h6 {
+        /* A more pronounced multi-layered shadow to create a soft, glassy glow behind the text, enhancing readability in dark mode. */
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.3), 0 0 24px rgba(255, 255, 255, 0.15);
+      }
+      .dark .blurry-text-effect code,
+      .dark .blurry-text-effect pre {
+        text-shadow: none !important;
+      }
+       /* Dynamic Table Styles */
+      .dynamic-table { width: 100%; margin: 1.5em 0; border-collapse: collapse; font-size: 0.9em; overflow: hidden; }
+      .dynamic-table th, .dynamic-table td { padding: 10px 14px; }
+
+      /* Style 1: Professional */
+      .table-style-1 { border: 1px solid #e5e7eb; border-radius: 8px; }
+      .dark .table-style-1 { border-color: #374151; }
+      .table-style-1 thead tr { background-color: #f9fafb; }
+      .dark .table-style-1 thead tr { background-color: #1f2937; }
+      .table-style-1 th { font-semibold; text-align: left; border-bottom: 2px solid #e5e7eb; }
+      .dark .table-style-1 th { border-bottom-color: #374151; }
+      .table-style-1 tbody tr { border-bottom: 1px solid #f3f4f6; }
+      .dark .table-style-1 tbody tr { border-bottom-color: #374151; }
+      .table-style-1 tbody tr:last-of-type { border-bottom: 0; }
+      
+      /* Style 2: Modern */
+      .table-style-2 { border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05); }
+      .dark .table-style-2 { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2), 0 2px 4px -2px rgba(0,0,0,0.2); }
+      .table-style-2 thead tr { background-color: #fbbf24; color: white; text-align: left; font-weight: bold; }
+      .dark .table-style-2 thead tr { background-color: #d97706; }
+      .table-style-2 tbody tr:nth-of-type(even) { background-color: #fef3c7; }
+      .dark .table-style-2 tbody tr:nth-of-type(even) { background-color: #4b5563; }
+
+      /* Style 3: Data Grid */
+      .table-style-3 { border: 1px solid #d1d5db; }
+      .dark .table-style-3 { border-color: #4b5563; }
+      .table-style-3 th, .table-style-3 td { border: 1px solid #d1d5db; }
+      .dark .table-style-3 th, .dark .table-style-3 td { border-color: #4b5563; }
+      .table-style-3 th { background-color: #f3f4f6; text-align: center; }
+      .dark .table-style-3 th { background-color: #374151; }
+      .table-style-3 tbody tr:hover { background-color: #f9fafb; }
+      .dark .table-style-3 tbody tr:hover { background-color: #1f2937; }
+    </style>
+    <script>
+      // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+      const theme = localStorage.getItem('theme');
+      let isDark;
+
+      if (theme === 'dark') {
+          isDark = true;
+      } else if (theme === 'light') {
+          isDark = false;
+      } else { // This covers 'system' or theme not being set
+          isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.getElementById('hljs-light-theme')?.setAttribute('disabled', 'true');
+          document.getElementById('hljs-dark-theme')?.removeAttribute('disabled');
+      } else {
+          document.documentElement.classList.remove('dark');
+          document.getElementById('hljs-light-theme')?.removeAttribute('disabled');
+          document.getElementById('hljs-dark-theme')?.setAttribute('disabled', 'true');
+      }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.417.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1",
+    "three": "https://unpkg.com/three@0.142.0/build/three.module.js",
+    "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.142.0/examples/jsm/controls/OrbitControls.js",
+    "three/examples/jsm/renderers/CSS2DRenderer.js": "https://unpkg.com/three@0.142.0/examples/jsm/renderers/CSS2DRenderer.js",
+    "gsap": "https://unpkg.com/gsap@3.10.4/index.js",
+    "three/": "https://aistudiocdn.com/three@^0.179.1/"
+  }
+}
+</script>
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
