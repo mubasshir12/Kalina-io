@@ -87,7 +87,7 @@ interface MarkdownRendererProps {
     setCodeForPreview?: (data: { code: string; language: string; } | null) => void;
 }
 
-const tableStyles = ['table-style-1', 'table-style-2', 'table-style-3'];
+const tableStyles = ['table-style-1'];
 const getRandomTableStyle = () => tableStyles[Math.floor(Math.random() * tableStyles.length)];
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate, isStreaming, setCodeForPreview }) => {
@@ -201,7 +201,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, o
                                 <tr key={rowIndex}>
                                     {row.map((cell, cellIndex) => (
                                         <td key={cellIndex} style={{ textAlign: alignments[cellIndex] as any }}>
-                                            {parseInline(cell.trim(), sources)}
+                                            <div className="cell-content-wrapper">
+                                                {parseInline(cell.trim(), sources)}
+                                            </div>
                                         </td>
 
                                     ))}

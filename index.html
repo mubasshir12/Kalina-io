@@ -77,8 +77,21 @@
         text-shadow: none !important;
       }
        /* Dynamic Table Styles */
-      .dynamic-table { width: 100%; margin: 1.5em 0; border-collapse: collapse; font-size: 0.9em; overflow: hidden; }
-      .dynamic-table th, .dynamic-table td { padding: 10px 14px; }
+      .dynamic-table { width: 100%; margin: 1.5em 0; border-collapse: collapse; font-size: 0.9em; overflow: hidden; table-layout: fixed; }
+      .dynamic-table th, .dynamic-table td {
+        padding: 10px 14px;
+        white-space: normal; /* Allow text to wrap */
+        vertical-align: top; /* Align content to the top */
+        width: 160px; /* Give columns a fixed width to enable horizontal scroll */
+      }
+      .cell-content-wrapper {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: break-word; /* Ensure long words can break and wrap */
+      }
 
       /* Style 1: Professional */
       .table-style-1 { border: 1px solid #e5e7eb; border-radius: 8px; }
@@ -90,24 +103,6 @@
       .table-style-1 tbody tr { border-bottom: 1px solid #f3f4f6; }
       .dark .table-style-1 tbody tr { border-bottom-color: #374151; }
       .table-style-1 tbody tr:last-of-type { border-bottom: 0; }
-      
-      /* Style 2: Modern */
-      .table-style-2 { border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05); }
-      .dark .table-style-2 { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2), 0 2px 4px -2px rgba(0,0,0,0.2); }
-      .table-style-2 thead tr { background-color: #fbbf24; color: white; text-align: left; font-weight: bold; }
-      .dark .table-style-2 thead tr { background-color: #d97706; }
-      .table-style-2 tbody tr:nth-of-type(even) { background-color: #fef3c7; }
-      .dark .table-style-2 tbody tr:nth-of-type(even) { background-color: #4b5563; }
-
-      /* Style 3: Data Grid */
-      .table-style-3 { border: 1px solid #d1d5db; }
-      .dark .table-style-3 { border-color: #4b5563; }
-      .table-style-3 th, .table-style-3 td { border: 1px solid #d1d5db; }
-      .dark .table-style-3 th, .dark .table-style-3 td { border-color: #4b5563; }
-      .table-style-3 th { background-color: #f3f4f6; text-align: center; }
-      .dark .table-style-3 th { background-color: #374151; }
-      .table-style-3 tbody tr:hover { background-color: #f9fafb; }
-      .dark .table-style-3 tbody tr:hover { background-color: #1f2937; }
     </style>
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC
